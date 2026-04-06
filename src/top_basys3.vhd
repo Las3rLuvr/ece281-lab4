@@ -25,8 +25,12 @@ end top_basys3;
 architecture top_basys3_arch of top_basys3 is
 
     -- signal declarations
-    
-  
+    signal w_clkFsm: std_logic;   
+    signal w_clkTdm: std_logic; 
+    signal w_floor: std_logic_vector(3 downto 0); 
+    signal w_seg: std_logic_vector(6 downto 0); 
+    signal w_clk_reset: std_logic; 
+    signal w_fsm_reset: std_logic; 
 	-- component declarations
     component sevenseg_decoder is
         port (
@@ -70,14 +74,56 @@ architecture top_basys3_arch of top_basys3 is
 	
 begin
 	-- PORT MAPS ----------------------------------------
-    	
-	
+    clock_div_fsm: clock_divider
+        generic map(  k_DIV => 25000000) -- How many clk cycles until slow clock toggles
+                                                   -- Effectively, you divide the clk double this 
+                                                  -- number (e.g., k_DIV := 2 --> clock divider of 4)
+        port map( 	i_clk => clk,
+                i_reset => w_clk_reset,
+                o_clk => w_clkFsm		   -- divided (slow) clock
+        );    	
+	clock_div_tdm: clock_divider
+        generic map(  k_DIV => 100000) -- How many clk cycles until slow clock toggles
+                                                   -- Effectively, you divide the clk double this 
+                                                  -- number (e.g., k_DIV := 2 --> clock divider of 4)
+        port map( 	i_clk => clk,
+                i_reset => w_clk_reset,
+                o_clk => w_clkTdm		   -- divided (slow) clock
+        );  
+        
+    elevator_inst: elevator_controller_fsm
+        Port map (
+            i_clk         => w_clkFsm,
+            i_reset       => w_fsm_reset,
+            is_stopped    => sw(1),
+            go_up_down    => sw(0),
+            o_floor  => w_floor		   
+		 );
+		 
+	sevenseg_inst: sevenseg_decoder
+	   port map(
+            i_Hex => w_floor,
+            o_seg_n => w_seg
+        );
+	TDM4_inst: TDM4
+	   generic map (k_WIDTH=>7)
+	   Port map( i_clk		=> w_clkTsm,
+           i_reset		=> w_clk_reset,
+           i_D3		=> "1111111",
+		   i_D2		=> "1111111",
+		   i_D1		=> "1111111",
+		   i_D0		=> w_seg,
+		   o_data		=> seg,
+		   o_sel		=> an
+	   );
 	-- CONCURRENT STATEMENTS ----------------------------
 	
 	-- LED 15 gets the FSM slow clock signal. The rest are grounded.
-	
+    led(15) <= 	w_clkFsm;
+    led(14 downto 0) <= (others => '0');
 	-- leave unused switches UNCONNECTED. Ignore any warnings this causes.
 	
 	-- reset signals
-	
+	w_clk_reset <= btnU or btnL;
+	w_fsm_reset <= btnU or btnR;
 end top_basys3_arch;
