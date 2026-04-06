@@ -27,8 +27,12 @@ architecture top_basys3_arch of top_basys3 is
     -- signal declarations
     signal w_clkFsm: std_logic;   
     signal w_clkTdm: std_logic; 
+    
     signal w_floor: std_logic_vector(3 downto 0); 
     signal w_seg: std_logic_vector(6 downto 0); 
+    signal w_floor2: std_logic_vector(3 downto 0); 
+    signal w_seg2: std_logic_vector(6 downto 0); 
+    
     signal w_clk_reset: std_logic; 
     signal w_fsm_reset: std_logic; 
 	-- component declarations
@@ -99,19 +103,34 @@ begin
             go_up_down    => sw(0),
             o_floor  => w_floor		   
 		 );
+         sevenseg_inst: sevenseg_decoder
+           port map(
+                i_Hex => w_floor,
+                o_seg_n => w_seg
+            );
+             
+    elevator_inst2: elevator_controller_fsm
+        Port map (
+            i_clk         => w_clkFsm,
+            i_reset       => w_fsm_reset,
+            is_stopped    => sw(14),
+            go_up_down    => sw(15),
+            o_floor  => w_floor2		   
+		 );
+             
+        sevenseg_inst2: sevenseg_decoder
+           port map(
+                i_Hex => w_floor2,
+                o_seg_n => w_seg2
+            );
 		 
-	sevenseg_inst: sevenseg_decoder
-	   port map(
-            i_Hex => w_floor,
-            o_seg_n => w_seg
-        );
 	TDM4_inst: TDM4
 	   generic map (k_WIDTH=>7)
 	   Port map( i_clk		=> w_clkTdm,
            i_reset		=> w_clk_reset,
-           i_D3		=> "1111111",
-		   i_D2		=> "1111111",
-		   i_D1		=> "1111111",
+           i_D3		=> "0001110", --F
+		   i_D2		=> w_seg2,
+		   i_D1		=> "0001110", --F
 		   i_D0		=> w_seg,
 		   o_data		=> seg,
 		   o_sel		=> an
